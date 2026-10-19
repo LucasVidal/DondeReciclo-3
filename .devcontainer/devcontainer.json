@@ -1,0 +1,25 @@
+{
+	"name": "DondeReciclo (Angular 8 / Ionic 5)",
+	"runArgs": [
+		"--name",
+		"DondeReciclo-3-devcontainer"
+	],
+	"image": "mcr.microsoft.com/devcontainers/javascript-node:14-bullseye",
+	"remoteUser": "node",
+	"forwardPorts": [
+		4200
+	],
+	"portsAttributes": {
+		"4200": {
+			"label": "ng serve"
+		}
+	},
+	"postCreateCommand": "sudo npm install -g npm@8 ionic && npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"angular.ng-template"
+			]
+		}
+	}
+}
