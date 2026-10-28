@@ -6,9 +6,9 @@ export const environment = {
   production: false,
   assets: "assets",
   url: 'http://localhost:8100',
-  backend: "https://dr3b.stage.data.org.uy/api/",
+  backend: "http://localhost:3000/api/",
   Uruguay: {
-    center: {lat: -34.905897, lng: -56.191406},
+    center: { lat: -34.905897, lng: -56.191406 },
     code: 'UY',
     id: 1,
     //predefinedSearch: [],
@@ -19,7 +19,7 @@ export const environment = {
     }
   },
   Colombia: {
-    center: {lat: 4.65087958676269, lng: -74.05580210009016},
+    center: { lat: 4.65087958676269, lng: -74.05580210009016 },
     code: 'COL',
     id: 2,
     //predefinedSearch:[],
