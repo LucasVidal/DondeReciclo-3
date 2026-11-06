@@ -1,8 +1,10 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { Container } from "src/app/models/basic_models.model";
+import { Container, ContainerCluster, MapContainer, isContainerCluster } from "src/app/models/basic_models.model";
 import { Router } from "@angular/router";
 import { Storage } from  '@ionic/storage';
+import { ModalController } from '@ionic/angular';
+import { ClusterModalComponent } from '../components/cluster-modal/cluster-modal.component';
 
 import { environment } from 'src/environments/environment';
 import { SessionService } from 'src/app/services/session.service';
@@ -120,15 +122,13 @@ export class MapService {
   userPosition: [number, number];
   public userMarker: L.Marker;
   currentContainer: Container;
-  containers: Container[];
+  containers: MapContainer[];
   currentBounds: [number, number][];
-  animating: boolean;
+  animating = false;
   markers: L.LayerGroup;
   zones: L.FeatureGroup;
   customZones: L.FeatureGroup;
   subZone: L.FeatureGroup;
-  saturationWarn = false;
-  eagerLoad = false;
   private _pinClick = new BehaviorSubject<boolean>(false);
   private _zoneClick = new BehaviorSubject<any>(0);
   private _mapChangeSub = new BehaviorSubject<boolean>(false);
@@ -151,7 +151,8 @@ export class MapService {
   constructor(
     private session: SessionService,
     private router: Router,
-    private  storage:  Storage
+    private  storage:  Storage,
+    private modalController: ModalController
   ) {
     this.session.getCountry().then( (country) => {
       if ( country != undefined ) {
@@ -160,15 +161,11 @@ export class MapService {
     });
   }
 
-  loadMarkers( markers: Container[], fly = true ){
+  loadMarkers( markers: MapContainer[], fly = true ){
     //this.loadMap();
     this.containers = markers;
-    this.saturationWarn = false;
     let mapBounds = [];
     //remove all markers and reload
-    if ( this.markers != undefined ) {
-      this.markers.clearLayers();
-    }
     if (this.userPosition) {
       if (this.userMarker) { // check
         this.map.removeLayer(this.userMarker); // remove
@@ -176,36 +173,14 @@ export class MapService {
       this.createUserMarker();
       mapBounds.push(this.userPosition);
     }
-    var markersLayer = []
     let center_markers = 10;
-    for (var i = 0; i < markers.length; i++) {
-      var marker_options = { container_pos: i, className: "ion-color-"+markers[i].class };
-      if ( markers[i].hasOwnProperty('custom_icon') && markers[i].custom_icon != '' ) {
-        marker_options['icon'] = L.icon({
-          iconUrl: markers[i].custom_icon,
-          iconSize: [37, 45],
-          iconAnchor: [18.5, 45],
-          popupAnchor: [1, -34],
-          tooltipAnchor: [16, -28],
-          shadowSize: [60, 60]
-        });
-      }
-      var newMarker = new L.CustomMarker([markers[i].latitude,markers[i].longitude], marker_options)
-      .on('click', this.clickPin, this); //L.bind(this.showPane, null, markers[i]))
-      if ( center_markers != 0 && fly ) {
+    if ( fly ) {
+      for (var i = 0; i < markers.length && center_markers > 0; i++, center_markers--) {
         mapBounds.push([markers[i].latitude, markers[i].longitude]);
-        center_markers = center_markers - 1;
-      }
-      markersLayer.push(newMarker);
-      //Prevent marker load over saturation level
-      if ( i > environment.pinSaturation && !this.eagerLoad ) {
-        this.saturationWarn = true;
-        this.mapChanges(true);
-        break;
       }
     }
     this.map.invalidateSize();
-    this.markers = L.layerGroup(markersLayer).addTo(this.map);
+    this.renderMarkers();
     if ( mapBounds.length > 0 ) {
       if ( fly ) {
         this.currentBounds = mapBounds;
@@ -216,6 +191,66 @@ export class MapService {
     else {
       return 0;
     }
+  }
+  // Draw pins; items flagged as cluster by the backend become a single cluster pin
+  renderMarkers() {
+    if ( this.markers != undefined ) {
+      this.markers.clearLayers();
+    }
+    if ( this.map == undefined || this.containers == undefined ) {
+      return;
+    }
+    const layers = this.containers.map( (container, i) =>
+      isContainerCluster(container) ? this.createClusterPin(container) : this.createPin(i)
+    );
+    this.markers = L.layerGroup(layers).addTo(this.map);
+  }
+  //
+  createPin(i: number) {
+    const container = this.containers[i];
+    if (isContainerCluster(container)) {
+      throw new Error('Cannot create an individual pin for a cluster');
+    }
+    var marker_options = { container_pos: i, className: "ion-color-"+container.class };
+    if ( container.hasOwnProperty('custom_icon') && container.custom_icon != '' ) {
+      marker_options['icon'] = L.icon({
+        iconUrl: container.custom_icon,
+        iconSize: [37, 45],
+        iconAnchor: [18.5, 45],
+        popupAnchor: [1, -34],
+        tooltipAnchor: [16, -28],
+        shadowSize: [60, 60]
+      });
+    }
+    return new L.CustomMarker([container.latitude, container.longitude], marker_options)
+    .on('click', this.clickPin, this);
+  }
+  //
+  createClusterPin(cluster: ContainerCluster) {
+    const count = cluster.count;
+    const size = count < 10 ? 34 : ( count < 100 ? 42 : 50 );
+    const icon = L.divIcon({
+      className: 'dr-cluster',
+      html: '<span>' + count + '</span>',
+      iconSize: [size, size]
+    });
+    return L.marker([cluster.latitude, cluster.longitude], { icon: icon })
+    .on('click', () => this.openCluster(cluster));
+  }
+  // Show the clustered pins in a modal and open the chosen one
+  async openCluster(cluster: ContainerCluster) {
+    const modal = await this.modalController.create({
+      component: ClusterModalComponent,
+      componentProps: { ids: cluster.ids, count: cluster.count },
+      cssClass: 'cluster-modal'
+    });
+    modal.onDidDismiss().then( (result) => {
+      if ( result.data != undefined ) {
+        this.currentContainer = result.data;
+        this._pinClick.next(true);
+      }
+    });
+    return modal.present();
   }
   //
   createUserMarker() {
@@ -278,7 +313,11 @@ export class MapService {
   //PIN behavior
   clickPin(pin: any) {
     let pos = pin.target.options.container_pos;
-    this.currentContainer = this.containers[pos];
+    const container = this.containers[pos];
+    if (!container || isContainerCluster(container)) {
+      throw new Error('Invalid container selected on map');
+    }
+    this.currentContainer = container;
     this._pinClick.next(true);
   }
   //Observable
