@@ -1,0 +1,14 @@
+:host {
+  ion-content {
+    --padding-start: 5vw;
+    --padding-end: 5vw;
+  }
+
+  .submit {
+    margin: 24px 0;
+  }
+
+  .error {
+    color: var(--ion-color-danger);
+  }
+}

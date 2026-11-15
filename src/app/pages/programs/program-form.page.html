@@ -1,0 +1,75 @@
+<app-header display="full"></app-header>
+<ion-content>
+  <ion-grid>
+    <ion-row class="ion-justify-content-center">
+      <ion-col size-xs="12" size-md="9" size-lg="6">
+        <div class="section-header">
+          <h1>Proponer un programa</h1>
+          <p>Completa los datos para un programa nuevo o una sugerencia de modificación.</p>
+          <p>Esta función está en desarrollo: los datos solo se mostrarán en la consola y no se guardarán.</p>
+        </div>
+
+        <form [formGroup]="form" (ngSubmit)="submit()">
+          <ion-item>
+            <ion-label>Tipo de propuesta</ion-label>
+            <ion-select formControlName="operation">
+              <ion-select-option value="create">Nuevo programa</ion-select-option>
+              <ion-select-option value="update">Modificar un programa existente</ion-select-option>
+            </ion-select>
+          </ion-item>
+
+          <ng-container *ngIf="form.get('operation').value === 'update'">
+            <p *ngIf="loadingPrograms">Cargando programas...</p>
+            <div *ngIf="programsError" role="alert">
+              <p>No se pudieron cargar los programas.</p>
+              <ion-button type="button" (click)="loadPrograms()">Reintentar</ion-button>
+            </div>
+            <p *ngIf="!loadingPrograms && !programsError && !programs.length">No hay programas disponibles.</p>
+            <ion-item *ngIf="!loadingPrograms && !programsError && programs.length">
+              <ion-label>Programa a modificar</ion-label>
+              <ion-select formControlName="program_id" placeholder="Selecciona un programa">
+                <ion-select-option *ngFor="let program of programs" [value]="program.id">
+                  {{ program.name || ('Programa ' + program.id) }}
+                </ion-select-option>
+              </ion-select>
+            </ion-item>
+          </ng-container>
+
+          <div formGroupName="program"
+            *ngIf="form.get('operation').value === 'create' || form.get('program_id').value">
+            <ion-item *ngFor="let field of textFields">
+              <ion-label position="floating">{{ field.label }}{{ field.name === 'name' ? ' *' : '' }}</ion-label>
+              <ion-input *ngIf="!field.multiline" [formControlName]="field.name" type="text"></ion-input>
+              <ion-textarea *ngIf="field.multiline" [formControlName]="field.name" autoGrow="true"></ion-textarea>
+            </ion-item>
+            <small class="error" *ngIf="form.get('program.name').touched && form.get('program.name').invalid">
+              Ingresa el nombre del programa.
+            </small>
+            <ion-item>
+              <ion-label>País *</ion-label>
+              <ion-select formControlName="country_id" placeholder="Selecciona un país">
+                <ion-select-option [value]="1">Uruguay</ion-select-option>
+                <ion-select-option [value]="2">Colombia</ion-select-option>
+              </ion-select>
+            </ion-item>
+            <small class="error" *ngIf="form.get('program.country_id').touched && form.get('program.country_id').invalid">
+              Selecciona un país válido.
+            </small>
+            <ion-item>
+              <ion-label position="floating">ID de categoría (opcional)</ion-label>
+              <ion-input formControlName="tag_id" type="number" min="1" step="1"></ion-input>
+            </ion-item>
+            <small class="error" *ngIf="form.get('program.tag_id').touched && form.get('program.tag_id').invalid">
+              Ingresa un ID de categoría válido.
+            </small>
+          </div>
+
+          <ion-button type="submit" class="submit"
+            [disabled]="form.invalid || (form.get('operation').value === 'update' && loadingPrograms)">
+            Mostrar propuesta en la consola
+          </ion-button>
+        </form>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+</ion-content>

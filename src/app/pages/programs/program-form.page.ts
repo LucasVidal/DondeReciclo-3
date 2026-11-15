@@ -1,0 +1,148 @@
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Subscription } from 'rxjs';
+import { Program } from 'src/app/models/basic_models.model';
+import { ApiService } from 'src/app/services/api.service';
+import { SessionService } from 'src/app/services/session.service';
+import { environment } from 'src/environments/environment';
+
+@Component({
+  selector: 'app-program-form',
+  templateUrl: './program-form.page.html',
+  styleUrls: ['./program-form.page.scss']
+})
+export class ProgramFormPage implements OnInit, OnDestroy {
+  form: FormGroup;
+  programs: Program[] = [];
+  loadingPrograms = false;
+  programsError = false;
+  private subscriptions = new Subscription();
+
+  readonly textFields = [
+    { name: 'name', label: 'Nombre', multiline: false },
+    { name: 'shortname', label: 'Nombre corto', multiline: false },
+    { name: 'responsable', label: 'Responsable', multiline: true },
+    { name: 'responsable_url', label: 'Enlace del responsable', multiline: false },
+    { name: 'more_info', label: 'Enlace con más información', multiline: false },
+    { name: 'contact', label: 'Contacto', multiline: true },
+    { name: 'information', label: 'Información', multiline: true },
+    { name: 'reception_conditions', label: 'Condiciones de recepción', multiline: true },
+    { name: 'benefits', label: 'Beneficios', multiline: true },
+    { name: 'lifecycle', label: 'Ciclo de vida', multiline: true },
+    { name: 'receives', label: 'Recibe', multiline: true },
+    { name: 'receives_no', label: 'No recibe', multiline: true }
+  ];
+
+  constructor(
+    private formBuilder: FormBuilder,
+    private api: ApiService,
+    private session: SessionService
+  ) {}
+
+  ngOnInit() {
+    this.form = this.formBuilder.group({
+      operation: ['create', Validators.required],
+      program_id: [null],
+      program: this.formBuilder.group({
+        name: ['', Validators.required],
+        shortname: [''],
+        responsable: [''],
+        responsable_url: [''],
+        more_info: [''],
+        reception_conditions: [''],
+        contact: [''],
+        information: [''],
+        benefits: [''],
+        lifecycle: [''],
+        receives: [''],
+        receives_no: [''],
+        country_id: [this.defaultCountryId(), [Validators.required, Validators.pattern('^[12]$')]],
+        tag_id: [null, [Validators.min(1), Validators.pattern('^[0-9]+$')]]
+      })
+    });
+
+    this.subscriptions.add(this.form.get('operation').valueChanges.subscribe(operation => {
+      const selected = this.form.get('program_id');
+      selected.setValidators(operation === 'update' ? Validators.required : null);
+      selected.reset(null, { emitEvent: false });
+      selected.updateValueAndValidity({ emitEvent: false });
+      this.resetProgram();
+      if (operation === 'update' && !this.programs.length && !this.loadingPrograms && !this.programsError) {
+        this.loadPrograms();
+      }
+    }));
+
+    this.subscriptions.add(this.form.get('program_id').valueChanges.subscribe(id => {
+      this.resetProgram();
+      const program = this.programs.find(item => item.id === id);
+      if (program) {
+        this.form.get('program').patchValue(program);
+      }
+    }));
+  }
+
+  ngOnDestroy() {
+    this.subscriptions.unsubscribe();
+  }
+
+  loadPrograms() {
+    this.loadingPrograms = true;
+    this.programsError = false;
+    this.subscriptions.add(this.api.loadPrograms().subscribe(
+      programs => {
+        this.programs = programs;
+        this.loadingPrograms = false;
+      },
+      error => {
+        console.error('Error al cargar los programas', error);
+        this.loadingPrograms = false;
+        this.programsError = true;
+      }
+    ));
+  }
+
+  submit() {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    const values = this.form.value;
+    const program = Object.assign({}, values.program);
+    this.textFields.forEach(field => {
+      if (program[field.name] === '') {
+        program[field.name] = null;
+      }
+    });
+    program.country_id = Number(program.country_id);
+    program.tag_id = program.tag_id === null || program.tag_id === '' ? null : Number(program.tag_id);
+    if (values.operation === 'update') {
+      program.id = values.program_id;
+    }
+    console.log('Propuesta de programa', { operation: values.operation, program: program });
+  }
+
+  private defaultCountryId(): number {
+    const country = environment[this.session.country];
+    return country && (country.id === 1 || country.id === 2) ? country.id : 1;
+  }
+
+  private resetProgram() {
+    this.form.get('program').reset({
+      name: '',
+      shortname: '',
+      responsable: '',
+      responsable_url: '',
+      more_info: '',
+      reception_conditions: '',
+      contact: '',
+      information: '',
+      benefits: '',
+      lifecycle: '',
+      receives: '',
+      receives_no: '',
+      country_id: this.defaultCountryId(),
+      tag_id: null
+    });
+  }
+}

@@ -2,6 +2,8 @@ import { NgModule } from '@angular/core';
 import { Routes, RouterModule } from '@angular/router';
 
 import { ProgramsPage } from './programs.page';
+import { ProgramFormPage } from './program-form.page';
+import { ProgramFormGuard } from './program-form.guard';
 
 const routes: Routes = [
   {
@@ -10,6 +12,11 @@ const routes: Routes = [
       {
         path: '',
         component: ProgramsPage
+      },
+      {
+        path: 'proponer',
+        component: ProgramFormPage,
+        canActivate: [ProgramFormGuard]
       },
       {
         path: ':programID',
