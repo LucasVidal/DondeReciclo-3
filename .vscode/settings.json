@@ -1,0 +1,8 @@
+{
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "never"
+    },
+    "editor.detectIndentation": true,
+    "editor.formatOnSave": false,
+    "files.trimTrailingWhitespace": false
+}
