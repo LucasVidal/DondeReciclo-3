@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { Program } from 'src/app/models/basic_models.model';
@@ -16,7 +16,10 @@ export class ProgramFormPage implements OnInit, OnDestroy {
   programs: Program[] = [];
   loadingPrograms = false;
   programsError = false;
+  uploadedFile: File | null = null;
+  fileUploadError = '';
   private subscriptions = new Subscription();
+  @ViewChild('fileInput', { static: false }) fileInput: any;
 
   readonly textFields = [
     { name: 'name', label: 'Nombre', multiline: false },
@@ -144,5 +147,44 @@ export class ProgramFormPage implements OnInit, OnDestroy {
       country_id: this.defaultCountryId(),
       tag_id: null
     });
+  }
+
+  downloadTemplate() {
+    const link = document.createElement('a');
+    link.href = 'assets/programa-contenedores-plantilla.xlsx';
+    link.download = 'programa-contenedores-plantilla.xlsx';
+    link.click();
+  }
+
+  onFileSelected(event: any) {
+    const file = event.target.files[0];
+    this.fileUploadError = '';
+
+    if (!file) {
+      this.uploadedFile = null;
+      return;
+    }
+
+    const fileName = file.name.toLowerCase();
+    const isValidFormat = fileName.endsWith('.xlsx') || fileName.endsWith('.csv');
+
+    if (!isValidFormat) {
+      this.fileUploadError = 'El archivo debe ser en formato CSV o XLSX.';
+      this.uploadedFile = null;
+      if (this.fileInput) {
+        this.fileInput.nativeElement.value = '';
+      }
+      return;
+    }
+
+    this.uploadedFile = file;
+  }
+
+  clearUploadedFile() {
+    this.uploadedFile = null;
+    this.fileUploadError = '';
+    if (this.fileInput) {
+      this.fileInput.nativeElement.value = '';
+    }
   }
 }
