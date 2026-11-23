@@ -4,6 +4,8 @@ import { Subscription } from 'rxjs';
 import { Program } from 'src/app/models/basic_models.model';
 import { ApiService } from 'src/app/services/api.service';
 import { SessionService } from 'src/app/services/session.service';
+import { AuthService } from 'src/app/services/auth.service';
+import { UtilsService } from 'src/app/services/utils.service';
 import { environment } from 'src/environments/environment';
 
 @Component({
@@ -39,7 +41,9 @@ export class ProgramFormPage implements OnInit, OnDestroy {
   constructor(
     private formBuilder: FormBuilder,
     private api: ApiService,
-    private session: SessionService
+    private session: SessionService,
+    private auth: AuthService,
+    private utils: UtilsService
   ) {}
 
   ngOnInit() {
@@ -122,7 +126,101 @@ export class ProgramFormPage implements OnInit, OnDestroy {
     if (values.operation === 'update') {
       program.id = values.program_id;
     }
-    console.log('Propuesta de programa', { operation: values.operation, program: program });
+
+    this.submitProgram(values.operation, program);
+  }
+
+  private submitProgram(operation: string, program: any) {
+    const formattedComment = this.formatProgramData(operation, program);
+    
+    const reportData = {
+      name: (this.auth.user && this.auth.user.name) || 'Usuario',
+      email: (this.auth.user && this.auth.user.email) || 'contacto@dondereciclo.uy',
+      subject: operation === 'create' ? 'Nuevo programa' : 'Modificación de programa',
+      comment: formattedComment,
+      id: program.id || 'new'
+    };
+
+    if (this.uploadedFile) {
+      this.submitProgramWithFile(reportData);
+    } else {
+      this.submitProgramWithoutFile(reportData);
+    }
+  }
+
+  private formatProgramData(operation: string, program: any): string {
+    const lines: string[] = [];
+    lines.push(`Tipo de propuesta: ${operation === 'create' ? 'Nuevo programa' : 'Modificación de programa'}`);
+    lines.push('');
+
+    if (operation === 'update' && program.id) {
+      lines.push(`ID del programa: ${program.id}`);
+      lines.push('');
+    }
+
+    this.textFields.forEach(field => {
+      const value = program[field.name];
+      if (value) {
+        const label = field.label;
+        lines.push(`${label}: ${value}`);
+      }
+    });
+
+    lines.push('');
+    lines.push(`País: ${program.country_id === 1 ? 'Uruguay' : program.country_id === 2 ? 'Colombia' : program.country_id}`);
+    
+    if (program.tag_id) {
+      lines.push(`Categoría ID: ${program.tag_id}`);
+    }
+
+    if (this.uploadedFile) {
+      lines.push('');
+      lines.push(`Archivo adjunto: ${this.uploadedFile.name}`);
+    }
+
+    return lines.join('\n');
+  }
+
+  private submitProgramWithFile(reportData: any) {
+    const reader = new FileReader();
+    reader.onload = (e: any) => {
+      const fileBody = e.target.result;
+      const formData = new FormData();
+      formData.append('name', reportData.name);
+      formData.append('email', reportData.email);
+      formData.append('subject', reportData.subject);
+      formData.append('comment', reportData.comment);
+      formData.append('id', reportData.id);
+      formData.append('photo', 'true'); // Hack para reutilizar el endpoint de reportes y que descargue el adjunto
+      formData.append('ClientFilename', this.uploadedFile.name);
+
+      this.utils.createProgram(fileBody, formData).subscribe(
+        success => {
+          if (success) {
+            this.form.reset();
+            this.clearUploadedFile();
+          }
+        }
+      );
+    };
+    reader.readAsArrayBuffer(this.uploadedFile);
+  }
+
+  private submitProgramWithoutFile(reportData: any) {
+    const formData = new FormData();
+    formData.append('name', reportData.name);
+    formData.append('email', reportData.email);
+    formData.append('subject', reportData.subject);
+    formData.append('comment', reportData.comment);
+    formData.append('id', reportData.id);
+
+    this.utils.createProgram(formData, formData).subscribe(
+      success => {
+        if (success) {
+          this.form.reset();
+        }
+      }
+    );
   }
 
   private defaultCountryId(): number {
