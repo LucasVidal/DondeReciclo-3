@@ -1,4 +1,10 @@
-<app-header display="full"></app-header>
+<app-header display="full">
+  <ion-buttons slot="end" *ngIf="auth.isLogged && showCategories">
+    <ion-button (click)="goToCreateProgram()">
+      <ion-icon slot="icon-only" name="add"></ion-icon>
+    </ion-button>
+  </ion-buttons>
+</app-header>
 
 <!-- Uruguay -->
 <ion-content class="tags" *ngIf="session.country == 'Uruguay' && showCategories == true">

@@ -1,10 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { ViewChild } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { IonSlides } from '@ionic/angular';
 import { Program } from "src/app/models/basic_models.model";
 import { ApiService } from "src/app/services/api.service";
 import { SessionService } from 'src/app/services/session.service';
+import { AuthService } from 'src/app/services/auth.service';
 import { InAppBrowser } from '@ionic-native/in-app-browser/ngx';
 
 @Component({
@@ -30,7 +31,9 @@ export class ProgramsPage implements OnInit {
   constructor(
     public api: ApiService<any>,
     public session: SessionService,
+    public auth: AuthService,
     private route: ActivatedRoute,
+    private router: Router,
     private iab: InAppBrowser
   ) { }
 
@@ -89,5 +92,9 @@ export class ProgramsPage implements OnInit {
   }
   goBack() {
     this.showCategories = true;
+  }
+  //
+  goToCreateProgram() {
+    this.router.navigate(['/programas/proponer']);
   }
 }

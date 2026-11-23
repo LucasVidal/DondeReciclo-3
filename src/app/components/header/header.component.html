@@ -27,6 +27,7 @@
         </ion-fab-list>
       </ion-fab>
       <ion-title *ngIf="title != undefined && title != ''">{{ title }}</ion-title>
+      <ng-content select="ion-buttons[slot='end']"></ng-content>
       <ion-buttons slot="end">
         <ion-button color="vidrios"
           *ngIf="this.session.country == 'Uruguay'"
