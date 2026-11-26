@@ -55,12 +55,14 @@
               Selecciona un país válido.
             </small>
             <ion-item>
-              <ion-label position="floating">ID de categoría (opcional)</ion-label>
-              <ion-input formControlName="tag_id" type="number" min="1" step="1"></ion-input>
+              <ion-label>Categoría (opcional)</ion-label>
+              <ion-select formControlName="tag_id" placeholder="Selecciona una categoría">
+                <ion-select-option [value]="null">(ninguna)</ion-select-option>
+                <ion-select-option *ngFor="let tag of tags" [value]="tag.id">
+                  {{ tag.name }}
+                </ion-select-option>
+              </ion-select>
             </ion-item>
-            <small class="error" *ngIf="form.get('program.tag_id').touched && form.get('program.tag_id').invalid">
-              Ingresa un ID de categoría válido.
-            </small>
           </div>
 
 

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { Program } from 'src/app/models/basic_models.model';
@@ -16,6 +16,7 @@ import { environment } from 'src/environments/environment';
 export class ProgramFormPage implements OnInit, OnDestroy {
   form: FormGroup;
   programs: Program[] = [];
+  tags: any[] = [];
   loadingPrograms = false;
   programsError = false;
   uploadedFile: File | null = null;
@@ -35,7 +36,9 @@ export class ProgramFormPage implements OnInit, OnDestroy {
     { name: 'benefits', label: 'Beneficios', multiline: true },
     { name: 'lifecycle', label: 'Ciclo de vida', multiline: true },
     { name: 'receives', label: 'Recibe', multiline: true },
-    { name: 'receives_no', label: 'No recibe', multiline: true }
+    { name: 'receives_no', label: 'No recibe', multiline: true },
+    { name: 'materials', label: 'Materiales', multiline: true },
+    { name: 'wastes', label: 'Residuos', multiline: true }
   ];
 
   constructor(
@@ -43,7 +46,8 @@ export class ProgramFormPage implements OnInit, OnDestroy {
     private api: ApiService,
     private session: SessionService,
     private auth: AuthService,
-    private utils: UtilsService
+    private utils: UtilsService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -63,10 +67,14 @@ export class ProgramFormPage implements OnInit, OnDestroy {
         lifecycle: [''],
         receives: [''],
         receives_no: [''],
+        materials: [''],
+        wastes: [''],
         country_id: [this.defaultCountryId(), [Validators.required, Validators.pattern('^[12]$')]],
-        tag_id: [null, [Validators.min(1), Validators.pattern('^[0-9]+$')]]
+        tag_id: [null]
       })
     });
+
+    this.loadTags();
 
     this.subscriptions.add(this.form.get('operation').valueChanges.subscribe(operation => {
       const selected = this.form.get('program_id');
@@ -90,6 +98,31 @@ export class ProgramFormPage implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subscriptions.unsubscribe();
+  }
+
+  loadTags() {
+    this.subscriptions.add(this.api.loadTagsPrograms().subscribe(
+      response => {
+        
+        if (Array.isArray(response)) {
+          // Response is array of {name: string, programs: Program[]}
+          // Extract unique tags with their IDs from the programs
+          const tagsMap = new Map<number, string>();
+          
+          response.forEach((tagGroup: any) => {
+            tagsMap.set(tagGroup.id, tagGroup.name );
+          });
+          
+          this.tags = Array.from(tagsMap.entries()).map(([id, name]) => ({ id, name }));
+          this.cdr.markForCheck();
+        } else if (response && response.programs) {
+          this.tags = response.programs;
+          this.cdr.markForCheck();
+        } 
+      },
+      error => {
+      }
+    ));
   }
 
   loadPrograms() {
@@ -242,6 +275,8 @@ export class ProgramFormPage implements OnInit, OnDestroy {
       lifecycle: '',
       receives: '',
       receives_no: '',
+      materials: '',
+      wastes: '',
       country_id: this.defaultCountryId(),
       tag_id: null
     });
