@@ -80,6 +80,65 @@ export class UtilsService {
     );
   }
   //
+  createProgram(fileBodyOrForm: any, formData: any): Observable<boolean> {
+    if (formData) {
+      // With file: fileBodyOrForm is ArrayBuffer, formData contains form fields
+      let options = {
+        headers: {
+        }
+      };
+      let params = {
+        name: formData.get('name'),
+        email: formData.get('email'),
+        subject: formData.get('subject'),
+        comment: formData.get('comment'),
+        id: formData.get('id'),
+        photo: formData.get('photo'),
+        ClientFilename: formData.get('ClientFilename')
+      };
+      options['params'] = params;
+      options.headers["Content-Type"] = this.detectMimeType(formData.get('ClientFilename'));
+      
+      return this.request.post(
+        environment.backend + "report", fileBodyOrForm, options
+      ).pipe(
+        map( (result: any) => {
+          if (!result.error) {
+            return true;
+          }
+          return false;
+        })
+      );
+    } else {
+      // Without file: fileBodyOrForm is FormData with text fields
+      let options = {
+        headers: {
+        }
+      };
+      let params = {
+        name: fileBodyOrForm.get('name'),
+        email: fileBodyOrForm.get('email'),
+        subject: fileBodyOrForm.get('subject'),
+        comment: fileBodyOrForm.get('comment'),
+        id: fileBodyOrForm.get('id')
+      };
+      options['params'] = params;
+      
+      return this.request.post(
+        environment.backend + "report", null, options
+      ).pipe(
+        map( (result: any) => {
+          if (!result.error) {
+            return true;
+          }
+          return false;
+        })
+      );
+    }
+  }
+  //
+  //
+  //
   uploadImage(image: any, imageData: any, id): Observable<boolean> {
     if ( this.auth.isLogged ) {
       let params = {
@@ -106,6 +165,22 @@ export class UtilsService {
         })
       );
     }
+  }
+
+  private detectMimeType(filename: string): string {
+    if (!filename) return 'application/octet-stream';
+    const ext = filename.toLowerCase().split('.').pop();
+    const mimeTypes: { [key: string]: string } = {
+      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'xls': 'application/vnd.ms-excel',
+      'csv': 'text/csv',
+      'pdf': 'application/pdf',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'gif': 'image/gif'
+    };
+    return mimeTypes[ext] || 'application/octet-stream';
   }
   validateForm(user_data: any) {
     let res = true;

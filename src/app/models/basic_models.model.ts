@@ -83,6 +83,8 @@ export class Program extends Base {
   receives: string;
   receives_no: string;
   shortname:string;
+  country_id: number;
+  tag_id: number | null;
   logo_url: string;
   materials_arr: number[];
   wastes_arr: number[];
